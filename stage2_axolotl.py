@@ -38,11 +38,10 @@ class ShareGPTFormat(DialogueFormat):
 
 
 class AlpacaFormat(DialogueFormat):
-    # Implement Alpaca-specific methods here
     pass
 
 
-def to_format(format_name: str, cleaned_log_dir: str, output_file: str):
+def to_axolotl(format_name: str, cleaned_log_dir: str, output_file: str):
     if format_name == "sharegpt":
         dialogue_format = ShareGPTFormat()
     elif format_name == "alpaca":

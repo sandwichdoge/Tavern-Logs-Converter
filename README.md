@@ -15,4 +15,7 @@
 - Custom prompt formats.
 
 #### How to use:
-- WIP
+```
+pip3 install -r requirements.txt
+python3 main.py  -i /path/to/SillyTavern -f sharegpt
+```
