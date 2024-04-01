@@ -1,4 +1,4 @@
-import clean_st_jsonl_logs
+import stage1_preprocessor
 import os
 import argparse
 
@@ -37,7 +37,7 @@ def main():
     if not args.output:
         output_dir = os.getcwd() + "/cleaned_logs"
 
-    logs_processed = clean_st_jsonl_logs.execute(st_dir, output_dir)
+    logs_processed = stage1_preprocessor.execute(st_dir, output_dir)
     print("Stage 1 done. Total {} logs. Output saved to: {}".format(logs_processed, output_dir))
 
 

@@ -1,7 +1,7 @@
 # This script goes through your SillyTavern logs folder, cleans all metadata, only keeping relevant fields, and obfuscates the username in the logs.
 # How to use:
 # Put this script in your SillyTavern folder
-# Run `python3 clean_st_jsonl_logs.py`
+# Run `python3 stage1_preprocessor.py`
 # Cleaned output are saved to cleaned_logs folder, in SillyTavern folder (same place where you put it)
 
 import json
