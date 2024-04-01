@@ -146,7 +146,9 @@ def keep_fields(data: dict, fields_to_keep: list[str]) -> dict:
 
 
 def prepend_instructions(convo: list[dict], user_name, char_name, char_desc) -> list[dict]:
-    sysprompt = "You are '{0}' in this roleplay chat with '{1}'. Respond to '{1}', be creative.".format(char_name, user_name)
+    sysprompt = "You are '{0}' in this roleplay chat with '{1}'. Respond to '{1}', be creative.".format(
+        char_name, user_name
+    )
     if char_desc:
         sysprompt += " {0}'s description: {1}".format(char_name, char_desc)
 

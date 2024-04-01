@@ -1,6 +1,8 @@
 import stage1_preprocessor
+import stage2_axolotl
 import os
 import argparse
+from datetime import datetime
 
 
 def is_st_dir(dir):
@@ -37,8 +39,16 @@ def main():
     if not args.output:
         output_dir = os.getcwd() + "/cleaned_logs"
 
-    logs_processed = stage1_preprocessor.execute(st_dir, output_dir)
-    print("Stage 1 done. Total {} logs. Output saved to: {}".format(logs_processed, output_dir))
+    stage1_out_dir = output_dir + "/stage1_out"
+
+    logs_processed = stage1_preprocessor.execute(st_dir, stage1_out_dir)
+    print("Stage 1 done. Preprocessed {} logs in total. Output saved to: {}".format(logs_processed, stage1_out_dir))
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    final_file = output_dir + "/sharegpt_" + timestamp + ".jsonl"
+
+    stage2_axolotl.to_sharegpt(stage1_out_dir, final_file)
+    print("Stage 2 done. Output saved to: {}".format(final_file))
 
 
 if __name__ == "__main__":
