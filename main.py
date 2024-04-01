@@ -47,7 +47,7 @@ def main():
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     final_file = output_dir + "/sharegpt_" + timestamp + ".jsonl"
 
-    stage2_axolotl.to_sharegpt(stage1_out_dir, final_file)
+    stage2_axolotl.to_format("sharegpt", stage1_out_dir, final_file)
     print("Stage 2 done. Output saved to: {}".format(final_file))
 
 
