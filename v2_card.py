@@ -107,9 +107,10 @@ def parse(image_path: str) -> TavernCardV2:
         raise Exception("Invalid Tavern card format - missing 'data' field")
 
     # Use dacite to convert the dictionary to a TavernCardV2 instance
+    ret = None
     try:
         ret = dacite.from_dict(data_class=TavernCardV2, data=jobj)
-    except:
-        print("Error parsing", image_path)
+    except Exception as error:
+        print("Error parsing", image_path, error)
 
     return ret
