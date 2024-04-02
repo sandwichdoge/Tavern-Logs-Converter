@@ -112,5 +112,6 @@ def parse(image_path: str) -> TavernCardV2:
         ret = dacite.from_dict(data_class=TavernCardV2, data=jobj)
     except Exception as error:
         print("Error parsing", image_path, error)
+        raise error
 
     return ret
