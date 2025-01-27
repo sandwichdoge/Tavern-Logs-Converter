@@ -145,16 +145,34 @@ def keep_fields(data: dict, fields_to_keep: list[str]) -> dict:
     return {k: v for k, v in data.items() if k in fields_to_keep}
 
 
-def prepend_instructions(convo: list[dict], user_name, char_name, char_desc) -> list[dict]:
-    sysprompt = "You are '{0}' in this roleplay chat with '{1}'. Respond to '{1}', be creative.".format(
-        char_name, user_name
-    )
+import random
+
+def prepend_instructions(convo: list[dict], user_name: str, char_name: str, char_desc: str) -> list[dict]:
+    # List of different system prompts to choose from
+    sysprompts = [
+        "You are '{0}' in this roleplay chat with '{1}'. Respond to '{1}', be creative.",
+        "In this roleplay chat, you are '{0}', interacting with '{1}'. Ensure your responses are imaginative and engaging.",
+        "Assume the role of '{0}' in a roleplay scenario with '{1}'. Make your responses captivating and character-appropriate.",
+        "You have taken on the persona of '{0}' in this roleplay conversation with '{1}'. Respond to '{1}' with creativity and depth.",
+        "As '{0}', engage in this roleplay chat with '{1}'. Your responses should be inventive and true to the character.",
+        "In this roleplay scenario, you are '{0}' interacting with '{1}'. Make your responses engaging and authentic."
+    ]
+
+    # Randomly select a system prompt
+    sysprompt_template = random.choice(sysprompts)
+    
+    # Format the selected system prompt
+    sysprompt = sysprompt_template.format(char_name, user_name)
+    
+    # Add character description if provided
     if char_desc:
         sysprompt += " {0}'s description: {1}".format(char_name, char_desc)
 
+    # Create the system message and starter message
     system = {"name": "system", "mes": sysprompt, "is_user": False}
     starter = {"name": user_name, "mes": "The roleplay begins.", "is_user": True}
 
+    # Return the new conversation with the prepended instructions
     return [system, starter] + convo
 
 
@@ -212,9 +230,9 @@ def process_file(log_path: str, output_folder: str) -> bool:
 
 
 def execute(st_folder: str, output_folder: str) -> int:
-    input_folder = st_folder + "/public/chats"
+    input_folder = st_folder + "/data/default-user/chats"
     if not os.path.exists(input_folder):
-        raise Exception("No public/chats folder detected in Tavern folder.")
+        raise Exception("No data/default-user/chats folder detected in Tavern folder.")
 
     # Create output folder if it doesn't exist
     if not os.path.exists(output_folder):
