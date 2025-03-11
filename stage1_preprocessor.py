@@ -1,229 +1,37 @@
-# This script goes through your SillyTavern logs folder, cleans all metadata, only keeping relevant fields, and obfuscates the username in the logs.
-# How to use:
-# Put this script in your SillyTavern folder
-# Run `python3 stage1_preprocessor.py`
-# Cleaned output are saved to cleaned_logs folder, in SillyTavern folder (same place where you put it)
+#!/usr/bin/env python3
+"""
+SillyTavern Log Preprocessor
+
+This script processes SillyTavern logs by:
+1. Cleaning metadata to keep only relevant fields
+2. Optionally obfuscating usernames in the logs
+3. Adding system instructions for roleplay
+
+Usage as a library:
+    from stage1_preprocessor import LogPreprocessor
+    
+    # Initialize preprocessor
+    processor = LogPreprocessor("path/to/sillytavern", "./cleaned_logs", obfuscate=True)
+    
+    # Process all logs
+    logs_processed = processor.process_all_files()
+"""
 
 import json
 import os
 import random
-import v2_card
+from typing import Dict, List, Optional, Any
+import v2_card 
 
 
-import random
-
-def random_unisex_name(blacklisted: str) -> str:
-    unisex_names = [
-        "Avery",
-        "Blake",
-        "Cameron",
-        "Dakota",
-        "Elliott",
-        "Finley",
-        "Hayden",
-        "Kennedy",
-        "Logan",
-        "Morgan",
-        "Peyton",
-        "Quinn",
-        "Noel",
-        "Wyatt",
-        "Alex",
-        "Ash",
-        "Bailey",
-        "Milan",
-        "Drew",
-        "Kris",
-        "Frankie",
-        "Gabriel",
-        "Jamie",
-        "Carey",
-        "Lee",
-        "Max",
-        "Parker",
-        "Quinn",
-        "Riley",
-        "Skyler",
-        "Taylor",
-        "River",
-        "Rene",
-        "Blair",
-        "Drew",
-        "Jordan",
-        "Parker",
-        "Angel",
-        "Garrett",
-        "Nova",
-        "Jesse",
-        "Kendall",
-        "Landon",
-        "Charlie",
-        "Nolan",
-        "Oliver",
-        "Robin",
-        "Ellis",
-        "Sam",
-        "Noah",
-        "Wesley",
-        "Shiki",
-        "Sora",
-        "Akira",
-        "Maki",
-        "Adrian",
-        "Ariel",
-        "Ashton",
-        "Aubrey",
-        "Briar",
-        "Casey",
-        "Dakota",
-        "Dallas",
-        "Devon",
-        "Eden",
-        "Emerson",
-        "Harper",
-        "Jaden",
-        "Jayden",
-        "Jessie",
-        "Jodie",
-        "Jules",
-        "Kai",
-        "Kelly",
-        "Kim",
-        "Lennon",
-        "Lexi",
-        "London",
-        "Mackenzie",
-        "Maddison",
-        "Marley",
-        "Merritt",
-        "Micah",
-        "Nico",
-        "Pat",
-        "Phoenix",
-        "Ray",
-        "Reese",
-        "Rory",
-        "Rowan",
-        "Sage",
-        "Santiago",
-        "Shawn",
-        "Sidney",
-        "Spencer",
-        "Stevie",
-        "Tatum",
-        "Toni",
-        "Tracy",
-        "Valentino",
-        "Valerie",
-        "Wren",
-        "Yael",
-        "Zion",
-        "Amari",
-        "Amina",
-        "Chi",
-        "Fatima",
-        "Guadalupe",
-        "Isla",
-        "Ji-hu",
-        "Kiran",
-        "Lior",
-        "Ming",
-        "Nia",
-        "Omari",
-        "Priya",
-        "Qadir",
-        "Ravi",
-        "Siobhan",
-        "Tariq",
-        "Uma",
-        "Van",
-        "Xiu",
-        "Yara",
-        "Zahra",
-    ]
-
-    name = random.choice(unisex_names)
-    while name == blacklisted:
-        name = random.choice(unisex_names)
-    return name
-
-
-def validate_inputs(log_path: str, output_folder: str):
-    if not isinstance(log_path, str):
-        raise TypeError("log_path must be a string")
-    if not isinstance(output_folder, str):
-        raise TypeError("output_folder must be a string")
-
-
-def should_process_file(log_path: str) -> bool:
-    return os.path.getsize(log_path) >= 4 * 1024
-
-
-def search_metadata(lines: list[str], field: str) -> str:
-    for line in lines:
-        jobj = json.loads(line)
-        for k, v in jobj.items():
-            if k == field:
-                return jobj[k]
-
-
-def obfuscate_user_name(line: dict, og_user_name: str, user_name: str) -> dict:
-    if not line or not og_user_name or not user_name:
-        return
-
-    new_data = {}
-
-    for k, v in line.items():
-        if k == "name" and line.get("is_user"):
-            new_data[k] = user_name
-        elif k == "mes":
-            new_data[k] = replace_name(v, og_user_name, user_name)
-        else:
-            new_data[k] = v
-
-    return new_data
-
-
-def replace_name(mes: str, og_user_name: str, user_name: str) -> str:
-    s = fuzzy_replace_name(mes, og_user_name, user_name)
-    # Handle case full name - replace both first and last name
-    if " " in og_user_name:
-        firstname = og_user_name.split(" ")[0]
-        lastname = og_user_name.split(" ")[-1]
-        s = fuzzy_replace_name(mes, firstname, user_name)
-        s = fuzzy_replace_name(mes, lastname, user_name)
-    return s
-
-
-def fuzzy_replace_name(mes: str, og_user_name: str, user_name: str) -> str:
-    mes = mes.replace(og_user_name[0] + "-" + og_user_name, user_name[0] + "-" + user_name)
-    mes = mes.replace(" " + og_user_name, " " + user_name)
-    mes = mes.replace('"' + og_user_name, '"' + user_name)
-    mes = mes.replace("—" + og_user_name, "—" + user_name)
-    mes = mes.replace("-" + og_user_name, "-" + user_name)
-    mes = mes.replace("'" + og_user_name, "'" + user_name)
-    mes = mes.replace("*" + og_user_name, "*" + user_name)
-    mes = mes.replace(og_user_name + " ", user_name + " ")
-    mes = mes.replace(og_user_name + ",", user_name + ",")
-    mes = mes.replace(og_user_name + "*", user_name + "*")
-    mes = mes.replace(og_user_name + "'", user_name + "'")
-    mes = mes.replace(og_user_name + ",", user_name + ",")
-    mes = mes.replace(og_user_name + ".", user_name + ".")
-    mes = mes.replace(og_user_name + "-", user_name + "-")
-    mes = mes.replace(og_user_name + "?", user_name + "?")
-
-    return mes
-
-
-def keep_fields(data: dict, fields_to_keep: list[str]) -> dict:
-    return {k: v for k, v in data.items() if k in fields_to_keep}
-
-
-import random
-
-def prepend_instructions(convo: list[dict], user_name: str, char_name: str, char_desc: str) -> list[dict]:
-    # List of different system prompts to choose from
-    sysprompts = [
+class LogPreprocessor:
+    """Handles the preprocessing of SillyTavern log files."""
+    
+    # Fields to keep in the processed output
+    FIELDS_TO_KEEP = ["name", "mes", "is_user", "extra"]
+    
+    # Collection of system prompts to randomly choose from
+    SYSTEM_PROMPTS = [
         "You are '{0}' in this roleplay chat with '{1}'. Respond to '{1}', be creative.",
         "In this roleplay chat, you are '{0}', interacting with '{1}'. Ensure your responses are imaginative and engaging.",
         "Assume the role of '{0}' in a roleplay scenario with '{1}'. Make your responses captivating and character-appropriate.",
@@ -231,93 +39,298 @@ def prepend_instructions(convo: list[dict], user_name: str, char_name: str, char
         "As '{0}', engage in this roleplay chat with '{1}'. Your responses should be inventive and true to the character.",
         "In this roleplay scenario, you are '{0}' interacting with '{1}'. Make your responses engaging and authentic."
     ]
-
-    # Randomly select a system prompt
-    sysprompt_template = random.choice(sysprompts)
     
-    # Format the selected system prompt
-    sysprompt = sysprompt_template.format(char_name, user_name)
+    # Simple fixed system prompt for when obfuscation is disabled
+    FIXED_SYSTEM_PROMPT = "Assume the role of '{0}' in a roleplay conversation with '{1}'. Respond as your character would."
     
-    # Add character description if provided
-    if char_desc:
-        sysprompt += " {0}'s description: {1}".format(char_name, char_desc)
-
-    # Create the system message and starter message
-    system = {"name": "system", "mes": sysprompt, "is_user": False}
-    starter = {"name": user_name, "mes": "The roleplay begins.", "is_user": True}
-
-    # Return the new conversation with the prepended instructions
-    return [system, starter] + convo
-
-
-def get_char_description(log_path: str) -> str:
-    a = log_path.replace("/chats/", "/characters/", 1).split("/")[:-1]
-    card_path = "/".join(a) + ".png"
-
-    if not os.path.exists(card_path):
-        return
-
-    card = v2_card.parse(card_path)
-    return card.data.description
-
-
-def fix_char_description(char_desc: str, user_name: str, char_name: str) -> str:
-    if not char_desc:
-        return char_desc
-    return char_desc.replace("{{char}}", char_name).replace("{{user}}", user_name)
-
-
-def process_file(log_path: str, output_folder: str) -> bool:
-    validate_inputs(log_path, output_folder)
-
-    if not should_process_file(log_path):
-        return False
-
-    with open(log_path, "r") as f:
-        lines = f.readlines()
-
-    convo = []
-    og_user_name = search_metadata(lines, "user_name")
-    og_char_name = search_metadata(lines, "character_name")
-    char_name = og_char_name
-    user_name = random_unisex_name(char_name)
-
-    for line in lines:
-        jobj = json.loads(line)
-
-        jobj = obfuscate_user_name(jobj, og_user_name, user_name)
-        jobj = keep_fields(jobj, ["name", "mes", "is_user"])
-
-        if jobj:
-            convo.append(jobj)
-
-    char_desc = get_char_description(log_path)
-    char_desc = fix_char_description(char_desc, user_name, char_name)
-    convo = prepend_instructions(convo, user_name, char_name, char_desc)
-
-    # Write processed output to new file
-    with open(f"{output_folder}/{os.path.basename(log_path)}", "w") as f:
-        for line in convo:
-            f.write(json.dumps(line) + "\n")
-
-    return True
-
-
-def execute(st_folder: str, output_folder: str) -> int:
-    input_folder = st_folder + "/data/default-user/chats"
-    if not os.path.exists(input_folder):
-        raise Exception("No data/default-user/chats folder detected in Tavern folder.")
-
-    # Create output folder if it doesn't exist
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    # Recursively process all .jsonl files in the input folder
-    logs_processed = 0
-    for root, _, files in os.walk(input_folder):
-        for file in files:
-            if file.endswith(".jsonl"):
-                if process_file(os.path.join(root, file), output_folder) == True:
-                    logs_processed += 1
-
-    return logs_processed
+    # List of unisex names for obfuscation
+    UNISEX_NAMES = [
+        "Avery", "Blake", "Cameron", "Dakota", "Elliott", "Finley", "Hayden", "Kennedy",
+        "Logan", "Morgan", "Peyton", "Quinn", "Noel", "Wyatt", "Alex", "Ash", "Bailey",
+        "Milan", "Drew", "Kris", "Frankie", "Gabriel", "Jamie", "Carey", "Lee", "Max",
+        "Parker", "Quinn", "Riley", "Skyler", "Taylor", "River", "Rene", "Blair", "Drew",
+        "Jordan", "Parker", "Angel", "Garrett", "Nova", "Jesse", "Kendall", "Landon",
+        "Charlie", "Nolan", "Oliver", "Robin", "Ellis", "Sam", "Noah", "Wesley", "Shiki",
+        "Sora", "Akira", "Maki", "Adrian", "Ariel", "Ashton", "Aubrey", "Briar", "Casey",
+        "Dakota", "Dallas", "Devon", "Eden", "Emerson", "Harper", "Jaden", "Jayden",
+        "Jessie", "Jodie", "Jules", "Kai", "Kelly", "Kim", "Lennon", "Lexi", "London",
+        "Mackenzie", "Maddison", "Marley", "Merritt", "Micah", "Nico", "Pat", "Phoenix",
+        "Ray", "Reese", "Rory", "Rowan", "Sage", "Santiago", "Shawn", "Sidney", "Spencer",
+        "Stevie", "Tatum", "Toni", "Tracy", "Valentino", "Valerie", "Wren", "Yael", "Zion",
+        "Amari", "Amina", "Chi", "Fatima", "Guadalupe", "Isla", "Ji-hu", "Kiran", "Lior",
+        "Ming", "Nia", "Omari", "Priya", "Qadir", "Ravi", "Siobhan", "Tariq", "Uma", "Van",
+        "Xiu", "Yara", "Zahra"
+    ]
+    
+    def __init__(self, st_folder: str, output_folder: str, obfuscate: bool = True):
+        """
+        Initialize the LogPreprocessor with the required parameters.
+        
+        Args:
+            st_folder: Path to the SillyTavern folder
+            output_folder: Path where processed logs will be saved
+            obfuscate: Whether to obfuscate usernames in the logs
+        """
+        self.st_folder = st_folder
+        self.input_folder = os.path.join(st_folder, "data", "default-user", "chats")
+        self.output_folder = output_folder
+        self.obfuscate = obfuscate
+        
+        # Validate input folder existence
+        if not os.path.exists(self.input_folder):
+            raise FileNotFoundError(
+                "No data/default-user/chats folder detected in Tavern folder."
+            )
+        
+        # Create output folder if it doesn't exist
+        if not os.path.exists(self.output_folder):
+            os.makedirs(self.output_folder)
+    
+    def get_random_unisex_name(self, blacklisted: str) -> str:
+        """
+        Get a random unisex name that isn't the blacklisted name.
+        
+        Args:
+            blacklisted: Name to avoid selecting
+            
+        Returns:
+            A randomly selected unisex name
+        """
+        name = random.choice(self.UNISEX_NAMES)
+        while name == blacklisted:
+            name = random.choice(self.UNISEX_NAMES)
+        return name
+    
+    def should_process_file(self, log_path: str) -> bool:
+        return os.path.getsize(log_path) >= 4 * 1024  # 4KB minimum
+    
+    def search_metadata(self, lines: List[str], field: str) -> Optional[str]:
+        """
+        Search for a specific metadata field in the log lines.
+        
+        Args:
+            lines: List of log lines (JSON strings)
+            field: Field name to search for
+            
+        Returns:
+            Value of the field if found, None otherwise
+        """
+        for line in lines:
+            try:
+                jobj = json.loads(line)
+                if field in jobj:
+                    return jobj[field]
+            except json.JSONDecodeError:
+                continue
+        return None
+    
+    def replace_name(self, message: str, original_name: str, new_name: str) -> str:
+        # Handle full names (first and last name)
+        if " " in original_name:
+            firstname = original_name.split(" ")[0]
+            lastname = original_name.split(" ")[-1]
+            message = self._fuzzy_replace_name(message, firstname, new_name)
+            message = self._fuzzy_replace_name(message, lastname, new_name)
+        
+        # Handle the whole name
+        return self._fuzzy_replace_name(message, original_name, new_name)
+    
+    def _fuzzy_replace_name(self, message: str, original_name: str, new_name: str) -> str:
+        """
+        Replace names with surrounding context to avoid partial word replacements.
+        """
+        # Define patterns for replacement (prefix + name, name + suffix)
+        patterns = [
+            (f"{original_name[0]}-{original_name}", f"{new_name[0]}-{new_name}"),
+            (f" {original_name}", f" {new_name}"),
+            (f"\"{original_name}", f"\"{new_name}"),
+            (f"—{original_name}", f"—{new_name}"),
+            (f"-{original_name}", f"-{new_name}"),
+            (f"'{original_name}", f"'{new_name}"),
+            (f"*{original_name}", f"*{new_name}"),
+            (f"{original_name} ", f"{new_name} "),
+            (f"{original_name},", f"{new_name},"),
+            (f"{original_name}*", f"{new_name}*"),
+            (f"{original_name}'", f"{new_name}'"),
+            (f"{original_name}.", f"{new_name}."),
+            (f"{original_name}-", f"{new_name}-"),
+            (f"{original_name}?", f"{new_name}?"),
+        ]
+        
+        for old, new in patterns:
+            message = message.replace(old, new)
+            
+        return message
+    
+    def obfuscate_user_name(self, entry: Dict[str, Any], original_name: str, new_name: str) -> Dict[str, Any]:
+        """
+        Obfuscate the username in a log entry.
+        
+        Args:
+            entry: Log entry as dictionary
+            original_name: Original username
+            new_name: New username for obfuscation
+            
+        Returns:
+            Processed log entry with obfuscated names
+        """
+        if not entry or not original_name or not new_name:
+            return entry
+        
+        new_data = {}
+        
+        for key, value in entry.items():
+            if key == "name" and entry.get("is_user"):
+                new_data[key] = new_name
+            elif key == "mes":
+                new_data[key] = self.replace_name(value, original_name, new_name)
+            else:
+                new_data[key] = value
+                
+        return new_data
+    
+    def keep_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Filter out unwanted fields, keeping only those specified in FIELDS_TO_KEEP.
+        
+        Args:
+            data: Original log entry
+            
+        Returns:
+            Filtered log entry
+        """
+        return {k: v for k, v in data.items() if k in self.FIELDS_TO_KEEP}
+    
+    def get_char_description(self, log_path: str) -> Optional[str]:
+        """
+        Extract character description from character card.
+        """
+        try:
+            # Convert chat path to character card path
+            card_path_parts = log_path.replace("/chats/", "/characters/", 1).split("/")[:-1]
+            card_path = "/".join(card_path_parts) + ".png"
+            
+            if not os.path.exists(card_path):
+                return None
+                
+            card = v2_card.parse(card_path)
+            return card.data.description
+        except Exception:
+            return None
+    
+    def fix_char_description(self, char_desc: Optional[str], user_name: str, char_name: str) -> Optional[str]:
+        """
+        Replace placeholders in character description with actual names.
+        
+        Args:
+            char_desc: Character description
+            user_name: Username to substitute
+            char_name: Character name to substitute
+            
+        Returns:
+            Processed character description
+        """
+        if not char_desc:
+            return None
+            
+        return char_desc.replace("{{char}}", char_name).replace("{{user}}", user_name)
+    
+    def prepend_instructions(self, conversation: List[Dict[str, Any]], 
+                           user_name: str, char_name: str, 
+                           char_desc: Optional[str]) -> List[Dict[str, Any]]:
+        """
+        Add system instructions to the beginning of the conversation.
+        
+        Args:
+            conversation: Original conversation entries
+            user_name: Username for the conversation
+            char_name: Character name for the conversation
+            char_desc: Character description
+            
+        Returns:
+            Conversation with prepended system instructions
+        """
+        # Choose system prompt based on obfuscation setting
+        if self.obfuscate:
+            # Select a random system prompt template when obfuscating
+            sysprompt_template = random.choice(self.SYSTEM_PROMPTS)
+        else:
+            # Use fixed system prompt when not obfuscating
+            sysprompt_template = self.FIXED_SYSTEM_PROMPT
+        
+        # Format the selected system prompt
+        sysprompt = sysprompt_template.format(char_name, user_name)
+        
+        # Add character description if provided
+        if char_desc:
+            sysprompt += f" {char_name}'s description: {char_desc}"
+        
+        # Create the system message and starter message
+        system = {"name": "system", "mes": sysprompt, "is_user": False}
+        starter = {"name": user_name, "mes": "The roleplay begins.", "is_user": True}
+        
+        # Return the new conversation with the prepended instructions
+        return [system, starter] + conversation
+    
+    def process_file(self, log_path: str) -> bool:
+        if not self.should_process_file(log_path):
+            return False
+        
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            
+            conversation = []
+            original_user_name = self.search_metadata(lines, "user_name")
+            original_char_name = self.search_metadata(lines, "character_name")
+            
+            if not original_user_name or not original_char_name:
+                return False
+                
+            char_name = original_char_name
+            user_name = original_user_name
+            
+            if self.obfuscate:
+                user_name = self.get_random_unisex_name(char_name)
+            
+            for line in lines:
+                try:
+                    entry = json.loads(line)
+                    
+                    if self.obfuscate:
+                        entry = self.obfuscate_user_name(entry, original_user_name, user_name)
+                    
+                    entry = self.keep_fields(entry)
+                    
+                    if entry:  # Only add valid entries
+                        conversation.append(entry)
+                except json.JSONDecodeError:
+                    continue
+            
+            char_desc = self.get_char_description(log_path)
+            char_desc = self.fix_char_description(char_desc, user_name, char_name)
+            conversation = self.prepend_instructions(conversation, user_name, char_name, char_desc)
+            
+            # Write processed output to new file
+            output_path = os.path.join(self.output_folder, os.path.basename(log_path))
+            with open(output_path, "w", encoding="utf-8") as f:
+                for entry in conversation:
+                    f.write(json.dumps(entry) + "\n")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error processing {log_path}: {e}")
+            return False
+    
+    def process_all_files(self) -> int:
+        logs_processed = 0
+        
+        for root, _, files in os.walk(self.input_folder):
+            for file in files:
+                if file.endswith(".jsonl"):
+                    log_path = os.path.join(root, file)
+                    if self.process_file(log_path):
+                        logs_processed += 1
+        
+        return logs_processed
