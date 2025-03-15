@@ -7,8 +7,7 @@ from datetime import datetime
 
 def is_st_dir(dir):
     """Check if the directory is a valid SillyTavern directory."""
-    #return os.path.isdir(os.path.join(dir, "public"))
-    return True
+    return os.path.isdir(os.path.join(dir, "public"))
 
 
 def main():
