@@ -138,28 +138,26 @@ class LogPreprocessor:
     def _fuzzy_replace_name(self, message: str, original_name: str, new_name: str) -> str:
         """
         Replace names with surrounding context to avoid partial word replacements.
+        Handles regular case, uppercase, and lowercase versions of the name.
         """
-        # Define patterns for replacement (prefix + name, name + suffix)
-        patterns = [
-            (f"{original_name[0]}-{original_name}", f"{new_name[0]}-{new_name}"),
-            (f" {original_name}", f" {new_name}"),
-            (f"\"{original_name}", f"\"{new_name}"),
-            (f"—{original_name}", f"—{new_name}"),
-            (f"-{original_name}", f"-{new_name}"),
-            (f"'{original_name}", f"'{new_name}"),
-            (f"*{original_name}", f"*{new_name}"),
-            (f"{original_name} ", f"{new_name} "),
-            (f"{original_name},", f"{new_name},"),
-            (f"{original_name}*", f"{new_name}*"),
-            (f"{original_name}'", f"{new_name}'"),
-            (f"{original_name}.", f"{new_name}."),
-            (f"{original_name}-", f"{new_name}-"),
-            (f"{original_name}?", f"{new_name}?"),
+        # Define surrounding context patterns
+        prefixes = ["", f"{original_name[0]}-", " ", "\"", "—", "-", "'", "*"]
+        suffixes = ["", " ", ",", "*", "'", ".", "-", "?"]
+        
+        # Process regular case, uppercase, and lowercase versions
+        case_variants = [
+            (original_name, new_name),            # Original case
+            (original_name.upper(), new_name.upper()),  # ALL CAPS
+            (original_name.lower(), new_name.lower())   # all lowercase
         ]
         
-        for old, new in patterns:
-            message = message.replace(old, new)
-            
+        for orig, replacement in case_variants:
+            for prefix in prefixes:
+                for suffix in suffixes:
+                    old = f"{prefix}{orig}{suffix}"
+                    new = f"{prefix}{replacement}{suffix}"
+                    message = message.replace(old, new)
+                    
         return message
     
     def obfuscate_user_name(self, entry: Dict[str, Any], original_name: str, new_name: str) -> Dict[str, Any]:
@@ -195,7 +193,7 @@ class LogPreprocessor:
                     new_data[key] = value
             else:
                 new_data[key] = value
-                
+
         return new_data
     
     def keep_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
