@@ -184,6 +184,15 @@ class LogPreprocessor:
                 new_data[key] = new_name
             elif key == "mes":
                 new_data[key] = self.replace_name(value, original_name, new_name)
+            elif key == "extra":
+                if isinstance(value, dict):
+                    new_extra = value.copy()
+                    if "reasoning" in new_extra and isinstance(new_extra["reasoning"], str):
+                        new_extra["reasoning"] = self.replace_name(new_extra["reasoning"], original_name, new_name)
+                    new_data[key] = new_extra
+                else:
+                    # Fallback for non-dict extra value
+                    new_data[key] = value
             else:
                 new_data[key] = value
                 
@@ -292,15 +301,17 @@ class LogPreprocessor:
             
             if self.obfuscate:
                 user_name = self.get_random_unisex_name(char_name)
+            else:
+                user_name = "User"
             
+            print(f"Processing {log_path} with user name {original_user_name} and char name {char_name}")
             for line in lines:
                 try:
                     entry = json.loads(line)
                     
-                    if self.obfuscate:
-                        entry = self.obfuscate_user_name(entry, original_user_name, user_name)
-                    
                     entry = self.keep_fields(entry)
+
+                    entry = self.obfuscate_user_name(entry, original_user_name, user_name)
                     
                     if entry:  # Only add valid entries
                         conversation.append(entry)
