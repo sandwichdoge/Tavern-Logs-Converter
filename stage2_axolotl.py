@@ -14,7 +14,7 @@ class DialogueFormat(ABC):
 
 
 class ShareGPTFormat(DialogueFormat):
-    def generate_dialogue(self, jobj: dict) -> dict:
+    def generate_dialogue(self, jobj: dict, include_reasoning: bool = False) -> dict:
         if jobj["name"] == "system":
             return {"from": "system", "value": jobj["mes"]}
         elif jobj["is_user"] == True:
@@ -24,22 +24,23 @@ class ShareGPTFormat(DialogueFormat):
             value = jobj["mes"]
             
             # Check if extra field exists and contains reasoning
-            if "extra" in jobj and isinstance(jobj["extra"], dict) and "reasoning" in jobj["extra"]:
-                reasoning = jobj["extra"]["reasoning"]
-                value = f"<think>{reasoning}</think>\n{value}"
+            if include_reasoning:
+                if "extra" in jobj and isinstance(jobj["extra"], dict) and "reasoning" in jobj["extra"]:
+                    reasoning = jobj["extra"]["reasoning"]
+                    value = f"<think>{reasoning}</think>\n{value}"
                 
             return {"from": "gpt", "value": value}
         else:
             print("Not supported", jobj)
 
-    def generate_conversation(self, cleaned_log_file: str) -> list[dict]:
+    def generate_conversation(self, cleaned_log_file: str, include_reasoning: bool = False) -> list[dict]:
         with open(cleaned_log_file, "r") as f:
             lines = f.readlines()
 
         conversations = []
         for line in lines:
             jobj = json.loads(line)
-            dialogue = self.generate_dialogue(jobj)
+            dialogue = self.generate_dialogue(jobj, include_reasoning)
             conversations.append(dialogue)
 
         return conversations
@@ -68,7 +69,7 @@ class AxolotlConverter:
         if os.path.isfile(output_file):
             os.remove(output_file)
     
-    def process_file(self, file_path: str) -> int:
+    def process_file(self, file_path: str, include_reasoning: bool) -> int:
         """
         Process a single file and append the result to the output file.
         
@@ -78,7 +79,7 @@ class AxolotlConverter:
         Returns:
             Number of conversations processed
         """
-        conversations = self.dialogue_format.generate_conversation(file_path)
+        conversations = self.dialogue_format.generate_conversation(file_path, include_reasoning)
         
         with open(self.output_file, "a") as fout:
             data = json.dumps({"conversations": conversations}) + "\n"
@@ -86,7 +87,7 @@ class AxolotlConverter:
         
         return len(conversations)
     
-    def process_all_files(self) -> int:
+    def process_all_files(self, include_reasoning: bool = False) -> int:
         """
         Process all JSONL files in the input directory and write to the output file.
         
@@ -99,7 +100,7 @@ class AxolotlConverter:
             for file in files:
                 if file.endswith(".jsonl"):
                     file_path = os.path.join(root, file)
-                    conversations_count = self.process_file(file_path)
+                    conversations_count = self.process_file(file_path, include_reasoning)
                     total_conversations += conversations_count
         
         return total_conversations

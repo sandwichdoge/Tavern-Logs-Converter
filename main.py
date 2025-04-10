@@ -44,6 +44,14 @@ def main():
         required=False,
         default=False,
     )
+    parser.add_argument(
+        "-r",
+        "--include-reasoning",
+        action="store_true",
+        help="Include reasoning in the output format. Default: false",
+        required=False,
+        default=False,
+    )
 
     args = parser.parse_args()
 
@@ -56,6 +64,7 @@ def main():
     output_dir = args.output
     obfuscate = args.obfuscate
     format_name = args.format
+    include_reasoning = args.include_reasoning
 
     # Create output directories
     os.makedirs(output_dir, exist_ok=True)
@@ -74,7 +83,7 @@ def main():
     
     print(f"Stage 2: Converting to {format_name} format...")
     converter = AxolotlConverter(format_name, stage1_out_dir, final_file)
-    conversations_processed = converter.process_all_files()
+    conversations_processed = converter.process_all_files(include_reasoning)
     print(f"Stage 2 completed. Processed {conversations_processed} conversations. Output saved to: {final_file}")
 
 
